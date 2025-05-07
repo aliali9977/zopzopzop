@@ -2,26 +2,15 @@ image: Visual Studio 2022  # بيئة Windows
 
 build_script:
   - ps: |
-      # تفعيل RDP
-      Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
-      Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-      
-      # تعيين كلمة مرور
-      $password = ConvertTo-SecureString "AppVeyorRDP@123" -AsPlainText -Force
-      Set-LocalUser -Name "Administrator" -Password $password
-      
-      # إظهار IP السيرفر
-      Write-Host "RDP IP: $(Test-Connection -ComputerName (hostname) -Count 1 | Select -ExpandProperty IPV4Address)"
-build_script:
-  - ps: |
-      # تنزيل Ngrok
+      # تنزيل وتشغيل Ngrok
       Invoke-WebRequest -Uri "https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip" -OutFile "ngrok.zip"
       Expand-Archive -Path "ngrok.zip" -DestinationPath "C:\ngrok" -Force
       cd C:\ngrok
 
-      # تفعيل RDP (كما في السابق)
+      # تفعيل RDP
       Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
       Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+      Enable-NetFirewallRule -Name "RemoteDesktop-UserMode-In-TCP"
 
       # تعيين كلمة مرور
       $password = ConvertTo-SecureString "MyRDP@123!" -AsPlainText -Force
@@ -30,10 +19,20 @@ build_script:
       # تشغيل Ngrok لنفق RDP (المنفذ 3389)
       Start-Process -FilePath "C:\ngrok\ngrok.exe" -ArgumentList "tcp 3389" -WindowStyle Hidden
 
-      # انتظر 10 ثوانٍ لجلب عنوان Ngrok العام
-      Start-Sleep -Seconds 10
-      $ngrok_url = (Invoke-WebRequest -Uri "http://localhost:4040/api/tunnels" -UseBasicParsing | ConvertFrom-Json).tunnels[0].public_url
-      Write-Host "اتصل عبر RDP باستخدام Ngrok:"
-      Write-Host "عنوان Ngrok العام: $ngrok_url"
-      Write-Host "Username: Administrator"
-      Write-Host "Password: MyRDP@123!"
+      # انتظر 20 ثانية لجلب عنوان Ngrok العام (زمن كافٍ للتشغيل)
+      Start-Sleep -Seconds 20
+      
+      # جلب عنوان Ngrok العام وعرضه
+      try {
+          $ngrok_url = (Invoke-WebRequest -Uri "http://localhost:4040/api/tunnels" -UseBasicParsing | ConvertFrom-Json).tunnels[0].public_url
+          Write-Host "=============================================="
+          Write-Host "اتصل عبر RDP باستخدام Ngrok:"
+          Write-Host "العنوان العام: $ngrok_url"
+          Write-Host "اسم المستخدم: Administrator"
+          Write-Host "كلمة المرور: MyRDP@123!"
+          Write-Host "=============================================="
+      } catch {
+          Write-Host "فشل في الحصول على عنوان Ngrok. تأكد من تشغيل Ngrok."
+          Write-Host "يمكنك محاولة الاتصال بالIP الداخلي:"
+          Write-Host "IP: $(Test-Connection -ComputerName (hostname) -Count 1 | Select -ExpandProperty IPV4Address)"
+      }
