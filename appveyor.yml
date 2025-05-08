@@ -1,12 +1,35 @@
+image: Visual Studio 2022
+
 build_script:
   - ps: |
-      # تنزيل وتشغيل Ngrok مع Token (مطلوب للإصدارات الجديدة)
+      # تنزيل Ngrok
       Invoke-WebRequest -Uri "https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip" -OutFile "ngrok.zip"
       Expand-Archive -Path "ngrok.zip" -DestinationPath "C:\ngrok" -Force
       cd C:\ngrok
-      echo "2wYixYOCbdUy0CB6A2LCJ5ESYiQ_6SCPYgHz7TZ6odtwDAVEE" > ngrok.yml  # استبدلها بـ Token الحقيقي من https://dashboard.ngrok.com/
-      .\ngrok.exe authtoken "اضف_Token_الخاص_بك_هنا"  # Token هنا أيضًا
+      
+      # إعداد Token (احصل عليه من https://dashboard.ngrok.com/)
+      .\ngrok.exe authtoken "2wYixYOCbdUy0CB6A2LCJ5ESYiQ_6SCPYgHz7TZ6odtwDAVEE"
+      
+      # تفعيل RDP
+      Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+      Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+      
+      # تعيين كلمة مرور
+      $password = ConvertTo-SecureString "MyRDP@123!" -AsPlainText -Force
+      Set-LocalUser -Name "Administrator" -Password $password
+      
+      # تشغيل Ngrok
       Start-Process -FilePath "C:\ngrok\ngrok.exe" -ArgumentList "tcp 3389" -WindowStyle Hidden
       Start-Sleep -Seconds 20
-      $ngrok_url = (Invoke-WebRequest -Uri "http://localhost:4040/api/tunnels" -UseBasicParsing | ConvertFrom-Json).tunnels[0].public_url
-      Write-Host "عنوان Ngrok العام: $ngrok_url"
+      
+      # جلب عنوان Ngrok
+      try {
+          $ngrok_url = (Invoke-WebRequest -Uri "http://localhost:4040/api/tunnels" -UseBasicParsing | ConvertFrom-Json).tunnels[0].public_url
+          Write-Host "======================================"
+          Write-Host "RDP via Ngrok: $ngrok_url"
+          Write-Host "Username: Administrator"
+          Write-Host "Password: MyRDP@123!"
+          Write-Host "======================================"
+      } catch {
+          Write-Host "فشل في الحصول على عنوان Ngrok. تأكد من تشغيله."
+      }
