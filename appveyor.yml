@@ -2,13 +2,8 @@ image: Visual Studio 2022
 
 build_script:
   - ps: |
-      # تنزيل Ngrok
-      Invoke-WebRequest -Uri "https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip" -OutFile "ngrok.zip"
-      Expand-Archive -Path "ngrok.zip" -DestinationPath "C:\ngrok" -Force
-      cd C:\ngrok
-      
-      # إعداد Token (احصل عليه من https://dashboard.ngrok.com/)
-      .\ngrok.exe authtoken "2wYixYOCbdUy0CB6A2LCJ5ESYiQ_6SCPYgHz7TZ6odtwDAVEE"
+      # تثبيت OpenSSH إذا لم يكن مثبتًا (مطلوب لـ Serveo)
+      Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
       
       # تفعيل RDP
       Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
@@ -18,18 +13,14 @@ build_script:
       $password = ConvertTo-SecureString "MyRDP@123!" -AsPlainText -Force
       Set-LocalUser -Name "Administrator" -Password $password
       
-      # تشغيل Ngrok
-      Start-Process -FilePath "C:\ngrok\ngrok.exe" -ArgumentList "tcp 3389" -WindowStyle Hidden
-      Start-Sleep -Seconds 20
+      # تشغيل Serveo لتعريض منفذ RDP (3389)
+      Start-Process ssh -ArgumentList "-R 80:localhost:3389 serveo.net" -NoNewWindow -Wait
       
-      # جلب عنوان Ngrok
-      try {
-          $ngrok_url = (Invoke-WebRequest -Uri "http://localhost:4040/api/tunnels" -UseBasicParsing | ConvertFrom-Json).tunnels[0].public_url
-          Write-Host "======================================"
-          Write-Host "RDP via Ngrok: $ngrok_url"
-          Write-Host "Username: Administrator"
-          Write-Host "Password: MyRDP@123!"
-          Write-Host "======================================"
-      } catch {
-          Write-Host "فشل في الحصول على عنوان Ngrok. تأكد من تشغيله."
-      }
+      # إظهار معلومات الاتصال (سيظهر عنوان Serveo في السجلات)
+      Write-Host "======================================"
+      Write-Host "RDP via Serveo:"
+      Write-Host "استخدم هذا العنوان في تطبيق Remote Desktop:"
+      Write-Host "serveo.net:3389"
+      Write-Host "Username: Administrator"
+      Write-Host "Password: MyRDP@123!"
+      Write-Host "======================================"
